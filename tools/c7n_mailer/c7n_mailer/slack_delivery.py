@@ -98,18 +98,24 @@ class SlackDelivery:
                     self.logger.debug(
                         "No %s tag found in resource." % tag_name)
                     continue
-
-                resolved_addrs = result['Value']
-
-                if not resolved_addrs.startswith("#"):
-                    resolved_addrs = "#" + resolved_addrs
-
-                slack_messages[resolved_addrs] = get_rendered_jinja(
-                    resolved_addrs, sqs_message,
-                    resource_list,
-                    self.logger, 'slack_template', 'slack_default',
-                    self.config['templates_folders'])
-                self.logger.debug("Generating message for specified Slack channel.")
+                if is_email(result['Value']):
+                    resolved_addrs = self.retrieve_user_im([result['Value']])
+                    for address, slack_target in resolved_addrs.items():
+                        slack_messages[address] = get_rendered_jinja(
+                            slack_target, sqs_message, resource_list,
+                            self.logger, 'slack_template', 'slack_default',
+                            self.config['templates_folders'])
+                        self.logger.debug("Generating message for specified Slack contact.")
+                else:
+                    resolved_addrs = result['Value']
+                    if not resolved_addrs.startswith("#"):
+                        resolved_addrs = "#" + resolved_addrs
+                    slack_messages[resolved_addrs] = get_rendered_jinja(
+                        resolved_addrs, sqs_message,
+                        resource_list,
+                        self.logger, 'slack_template', 'slack_default',
+                        self.config['templates_folders'])
+                    self.logger.debug("Generating message for specified Slack channel.")
         return slack_messages
 
     def slack_handler(self, sqs_message, slack_messages):
